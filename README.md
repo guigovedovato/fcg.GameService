@@ -2,7 +2,7 @@
 
 ## Microsserviço de Jogos
 
-Uma API criada em Dot Net Core 8 responsável pelo controle dos jogos e da biblioteca de jogos utilizado no sistema da Fiap Cloud Games.
+Uma API criada em .NET Core 8 responsável pelo controle dos jogos e da biblioteca de jogos utilizada no sistema da Fiap Cloud Games.
 Através desta API, será possível pesquisar, cadastrar, excluir e modificar jogos, assim como também criar e adicionar jogos à biblioteca de algum usuário.
 
 ## Indice
