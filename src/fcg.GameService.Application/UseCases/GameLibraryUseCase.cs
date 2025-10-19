@@ -27,7 +27,13 @@ public class GameLibraryUseCase(
         return GameLibraryMapperAdapter.FromEntityToDto(result);
     }
 
-    public async Task<ResponseGameLibraryDTO?> GetByUserIdAsync(string userId)
+    public async Task<ResponseGameLibraryDTO?> TryGetByUserIdAsync(string userId)
+    {
+        GameLibrary? result = await _repository.GetByUserIdAsync(userId);
+        return result is null ? null : GameLibraryMapperAdapter.FromEntityToDto(result);
+    }
+
+    public async Task<ResponseGameLibraryDTO> GetByUserIdAsync(string userId)
     {
         GameLibrary? result = await _repository.GetByUserIdAsync(userId) ??
             throw new AppNotFoundException($"{ENTITY} não encontrada para o usuário {userId}");
@@ -47,7 +53,8 @@ public class GameLibraryUseCase(
 
         bool elastic = await _elasticClient.AddOrUpdate(new UserLog
             (createdLibrary.UserId,
-             string.Join("|", createdLibrary.Games.Select(g => string.Join("|", g.Tags)))
+             string.Join("|", createdLibrary.Games.Select(g => string.Join("|", g.Tags))),
+             string.Join("|", createdLibrary.Games.Select(g => g.Id))
             ), ENTITY);
 
         if (!elastic)
@@ -73,7 +80,8 @@ public class GameLibraryUseCase(
         {
             bool elastic = await _elasticClient.AddOrUpdate(new UserLog
                 (library!.UserId,
-                 string.Join("|", gameAdquired.Tags)
+                 string.Join("|", gameAdquired.Tags),
+                 gameAdquired.Id
                 ), ENTITY);
 
             if (!elastic)

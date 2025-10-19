@@ -2,6 +2,8 @@
 using fcg.GameService.Application.Interfaces;
 using fcg.GameService.Domain.Event;
 using fcg.GameService.Presentation.Event.Publish;
+using Microsoft.Extensions.Configuration;
+using System.Text;
 using System.Text.Json;
 
 namespace fcg.GameService.Infrastructure.Event;
@@ -11,12 +13,12 @@ public class GamePurchasePublisher : IPublisher<GamePurchasePublishEvent>
     private readonly QueueClient _client;
     private readonly IAppLogger<GamePurchasePublisher> _logger;
 
-    public GamePurchasePublisher(IAppLogger<GamePurchasePublisher> logger)
+    public GamePurchasePublisher(IConfiguration config, IAppLogger<GamePurchasePublisher> logger)
     {
         _client = new QueueClient(
-            Environment.GetEnvironmentVariable("AzureStorage_ConnectionString"),
-            Environment.GetEnvironmentVariable("AzureStorage_ProducerQueueName"),
-            new QueueClientOptions { MessageEncoding = QueueMessageEncoding.Base64 });
+            config["AzureStorage:ConnectionString"],
+            config["AzureStorage:ProducerQueueName"],
+            new QueueClientOptions { MessageEncoding = QueueMessageEncoding.None });
 
         _client.CreateIfNotExists();
         _logger = logger;
@@ -27,10 +29,11 @@ public class GamePurchasePublisher : IPublisher<GamePurchasePublishEvent>
         try
         {
             string json = JsonSerializer.Serialize(message);
+            string base64Message = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
             _logger.LogInformation("Publicando pagamento na fila - PaymentId: {PaymentId}, Amount: {Amount}, Currency: {Currency}",
                 message.PaymentId, message.Amount, message.Currency);
-            await _client.SendMessageAsync(json, cancellationToken: cancellationToken);
+            await _client.SendMessageAsync(base64Message, cancellationToken: cancellationToken);
             _logger.LogInformation("Pagamento publicado com sucesso - PaymentId: {PaymentId}", message.PaymentId);
         }
         catch (Exception ex)

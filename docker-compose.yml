@@ -1,70 +1,45 @@
-version: '3.9'
-
 services:
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ${PROJECT_NAME}-api
+    image: fcg.gameservice.api:latest
+    container_name: FCGGameService-api
+    restart: unless-stopped
     ports:
-      - "5000:5000"   # HTTP
-      - "5001:5001"   # HTTPS
+      - "5000:8080"   # HTTP
     environment:
       DOTNET_USE_POLLING_FILE_WATCHER: "1"
       DOTNET_RUNNING_IN_CONTAINER: "true"
       DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
-      ASPNETCORE_URLS: "http://+:5000;https://+:5001"
-      ASPNETCORE_ENVIRONMENT: "Development"
-      MongoDbSettings_ConnectionString: ""
-      MongoDbSettings_DatabaseName: ""
-      ElasticSettings_ApiKey: ""
-      ElasticSettings_CloudId: ""
-      AzureStorage_ConnectionString: ""
-      AzureStorage_ProducerQueueName: ""
-      AzureStorage_ConsumerQueueName: ""
-    depends_on:
-      mongo:
-        condition: service_healthy
+      ASPNETCORE_URLS: "http://+:8080"
+      ASPNETCORE_HTTP_PORT: 8080
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      MongoDbSettings__ConnectionString: ${MongoDbSettings__ConnectionString}
+      MongoDbSettings__DatabaseName: ${MongoDbSettings__DatabaseName}
+      ElasticSettings__ApiKey: ${ElasticSettings__ApiKey}
+      ElasticSettings__CloudId: ${ElasticSettings__CloudId}
+      AzureStorage__ConnectionString: ${AzureStorage__ConnectionString}
+      AzureStorage__ProducerQueueName: ${AzureStorage__ProducerQueueName}
+      AzureStorage__ConsumerQueueName: ${AzureStorage__ConsumerQueueName}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health", "||", "curl", "-f", "http://localhost:8080/", "||", "exit", "1"]
+      interval: 45s
+      timeout: 15s
+      retries: 10
+      start_period: 90s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - fcg_network
 
-  mongo:
-    image: mongo:7.0
-    container_name: mongodb
-    restart: always
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: fcg!d4t4b4s3
-      MONGO_INITDB_DATABASE: FCGGameService
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--username", "root", "--password", "fcg!d4t4b4s3", "--eval", "db.adminCommand('ping')"]
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-
-  mongo-express:
-    image: mongo-express:1.0.2
-    container_name: mongo-express
-    restart: always
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: fcg!d4t4b4s3
-      ME_CONFIG_MONGODB_SERVER: mongo
-    depends_on:
-      mongo:
-        condition: service_healthy
-
-volumes:
-  mongo_data:
-    driver: local
+networks:
+  fcg_network:
+    driver: bridge
